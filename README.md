@@ -6,12 +6,13 @@ Free n8n workflow that emails each client a reminder 24 h before their appointme
 
 ## Files
 - `recordatorio_citas_email_ES.json`: Spanish version (node names and notes in Spanish)
-- `send-appointment-reminders-google-sheets_EN.json`: English version (same logic)
-- `Citas.csv`: sample appointments tab (columns: id, fecha, hora, cliente, email, telefono, servicio, profesional, estado, recordatorio_enviado)
+- `send-appointment-reminders-google-sheets_EN.json`: English version (English node names, sheet columns and email text; also handles MM/DD/YYYY dates, 12-hour times and failed sends)
+- `Citas.csv`: sample tab for the Spanish version (columns: id, fecha, hora, cliente, email, telefono, servicio, profesional, estado, recordatorio_enviado)
+- `appointments_sample_EN.csv`: sample tab for the English version, named **Appointments** (columns: id, date, time, client_name, email, service, staff, status, reminder_sent)
 
 ## Setup (15 min)
 1. Import the JSON in n8n (Workflows → Import from file).
-2. Upload `Citas.csv` to Google Sheets as a tab named **Citas**.
+2. Upload `Citas.csv` (Spanish version) as a tab named **Citas**, or `appointments_sample_EN.csv` (English version) as a tab named **Appointments**.
 3. Fill in the settings node (sheet ID, business name, sender, phone, address, links).
 4. Attach Google Sheets and SMTP credentials, run it once, then activate.
 

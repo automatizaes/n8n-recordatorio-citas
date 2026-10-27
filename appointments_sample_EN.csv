@@ -1,0 +1,4 @@
+id,date,time,client_name,email,service,staff,status,reminder_sent
+1,2026-11-03,10:00,Mary Smith,mary@example.com,Balayage highlights,Anna,pending,
+2,03/11/2026,11:30,John Doe,john@example.com,Haircut + beard,Luke,confirmed,
+3,2026-11-04,17:00,Laura Green,laura@example.com,Haircut,Anna,cancelled,
