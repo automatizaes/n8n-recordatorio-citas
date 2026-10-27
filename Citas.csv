@@ -1,0 +1,4 @@
+id,fecha,hora,cliente,telefono,email,servicio,profesional,precio,estado,recordatorio_enviado,resena_solicitada,consentimiento_whatsapp,notas
+1,2026-11-03,10:00,María López,+34612345678,maria@example.com,Mechas balayage,Ana,85,pendiente,,,sí,Borra estas filas de ejemplo
+2,2026-11-03,11:30,Javier Ruiz,+34622334455,javier@example.com,Corte + barba,Luis,22,confirmada,,,no,
+3,2026-11-04,17:00,Laura Gómez,+34699111222,,Corte,Ana,25,pendiente,,,sí,

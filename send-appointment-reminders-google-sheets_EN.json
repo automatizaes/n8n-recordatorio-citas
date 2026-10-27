@@ -1,0 +1,333 @@
+{
+  "name": "Send appointment reminder emails from Google Sheets for salons and barbershops",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8-21 * * *"
+            }
+          ]
+        }
+      },
+      "id": "b82a3656-bfe5-4c10-bc4e-a0f2e41ef611",
+      "name": "Run every hour (8:00-21:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "997e74cb-9d4a-48bd-8579-17f8b47161c0",
+              "name": "nombre_negocio",
+              "value": "Peluquería Ejemplo",
+              "type": "string"
+            },
+            {
+              "id": "8c010723-a117-45b8-b71d-2ae10f38506a",
+              "name": "sheet_id",
+              "value": "PEGA_AQUI_EL_ID_DE_TU_GOOGLE_SHEET",
+              "type": "string"
+            },
+            {
+              "id": "fe1f5dec-9a4a-4b48-a536-0809ef1ec514",
+              "name": "email_negocio",
+              "value": "tu-email@ejemplo.com",
+              "type": "string"
+            },
+            {
+              "id": "f28e4d64-bc8b-4089-8fb0-bf93cfdcdbc0",
+              "name": "email_remitente",
+              "value": "Peluquería Ejemplo <tu-email@ejemplo.com>",
+              "type": "string"
+            },
+            {
+              "id": "d1278d94-7680-4624-beed-d83b279e1af2",
+              "name": "telefono_negocio",
+              "value": "+34 600 000 000",
+              "type": "string"
+            },
+            {
+              "id": "33d1dece-8ff4-4586-9f0c-26da7ae7858b",
+              "name": "direccion",
+              "value": "Calle Ejemplo 1, 28001 Madrid",
+              "type": "string"
+            },
+            {
+              "id": "e53d65dc-a0f9-4626-9b35-54fdcbf3bf66",
+              "name": "link_maps",
+              "value": "https://maps.google.com/?q=TU+PELUQUERIA",
+              "type": "string"
+            },
+            {
+              "id": "9dbbff13-c6f0-4e1e-92b9-edfcc408e611",
+              "name": "link_reservas",
+              "value": "https://wa.me/34600000000",
+              "type": "string"
+            },
+            {
+              "id": "526983df-7b69-44ed-9d85-cdf59a89647c",
+              "name": "zona_horaria",
+              "value": "Europe/Madrid",
+              "type": "string"
+            },
+            {
+              "id": "c8db6c2a-919e-4a86-84ad-096304dd76d9",
+              "name": "horas_antelacion",
+              "value": "24",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3ce5b989-b622-4aa6-9542-baf49b269e7d",
+      "name": "Set business settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Set business settings').first().json.sheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Citas",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "7f3c626c-4eb6-450c-b1f4-a41d99c727ac",
+      "name": "Read appointments from Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Edit the email subject/body in the TEXTOS section below (default language: Spanish).\nconst cfg = $('Set business settings').first().json;\n\n// ===== Utilidades (no hace falta tocarlas) =====\nconst ZONA = cfg.zona_horaria || 'Europe/Madrid';\nconst si = v => /^(s[ií]|si|yes|true|1|x|ok)$/i.test(String(v ?? '').trim());\nfunction normTel(t) {\n  let s = String(t ?? '').replace(/[^\\d+]/g, '');\n  if (!s) return '';\n  if (s.startsWith('00')) s = '+' + s.slice(2);\n  if (!s.startsWith('+')) s = (s.length === 9 ? '+34' : '+') + s;\n  return s;\n}\nfunction parseCita(r) {\n  const f = String(r.fecha ?? '').trim();\n  const h = String(r.hora ?? '').trim();\n  let y, m, d, mm;\n  if ((mm = f.match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})/))) { y = +mm[1]; m = +mm[2]; d = +mm[3]; }\n  else if ((mm = f.match(/^(\\d{1,2})[\\/\\-.](\\d{1,2})[\\/\\-.](\\d{2,4})$/))) { d = +mm[1]; m = +mm[2]; y = +mm[3]; if (y < 100) y += 2000; }\n  else if (/^\\d+(\\.\\d+)?$/.test(f)) { const b = DateTime.fromObject({ year: 1899, month: 12, day: 30 }, { zone: ZONA }).plus({ days: Math.floor(+f) }); y = b.year; m = b.month; d = b.day; }\n  else return null;\n  const hm = h.match(/^(\\d{1,2})[:.h](\\d{2})/) || [null, '0', '0'];\n  const dt = DateTime.fromObject({ year: y, month: m, day: d, hour: +hm[1], minute: +hm[2] }, { zone: ZONA });\n  return dt.isValid ? dt : null;\n}\nconst estadoDe = r => String(r.estado || 'pendiente').toLowerCase().trim().replace('ó', 'o').replace(/\\s+/g, '_');\nconst nombreCorto = n => String(n || '').trim().split(/\\s+/)[0] || '';\nconst fechaTexto = dt => dt.setLocale('es').toFormat(\"cccc d 'de' LLLL\");\nconst precioNum = p => { const n = parseFloat(String(p ?? '').replace(/[^\\d,.-]/g, '').replace(',', '.')); return isNaN(n) ? 0 : n; };\nconst esc = s => String(s ?? '').replace(/[&<>\"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]));\nfunction plantillaEmail(titulo, parrafos, boton) {\n  const btn = boton ? `<p style=\"margin:24px 0\"><a href=\"${esc(boton.url)}\" style=\"background:#111;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold\">${esc(boton.texto)}</a></p>` : '';\n  return `<div style=\"font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;color:#222;line-height:1.5\">\n<h2 style=\"margin-bottom:8px\">${esc(titulo)}</h2>${parrafos.map(p => `<p>${p}</p>`).join('')}${btn}\n<p style=\"color:#777;font-size:13px;border-top:1px solid #eee;padding-top:12px\">${esc(cfg.nombre_negocio)} · ${esc(cfg.direccion)} · ${esc(cfg.telefono_negocio)}</p></div>`;\n}\n// ===== Fin utilidades =====\n\n\nconst ahora = DateTime.now().setZone(ZONA);\nconst horas = Number(cfg.horas_antelacion) || 24;\nconst limite = ahora.plus({ hours: horas });\nconst out = [];\nfor (const item of $input.all()) {\n  const r = item.json;\n  if (!r.id) continue;\n  if (['cancelada', 'completada', 'no_asistio'].includes(estadoDe(r))) continue;\n  if (String(r.recordatorio_enviado ?? '').trim()) continue;\n  const dt = parseCita(r);\n  if (!dt || dt <= ahora || dt > limite) continue;\n  const tel = normTel(r.telefono);\n  const email = String(r.email ?? '').trim();\n  let canal = null;\n  if (email.includes('@')) canal = 'email';\n  if (!canal) continue;\n  const c = { id: String(r.id), cliente: String(r.cliente ?? ''), nombre: nombreCorto(r.cliente) || 'hola', telefono_wa: tel.replace('+', ''),\n    email, servicio: String(r.servicio || 'tu cita'), profesional: String(r.profesional ?? ''), fecha_texto: fechaTexto(dt), hora_texto: dt.toFormat('HH:mm'), canal };\n  // ===== TEXTOS =====\n  c.asunto = `Recordatorio: tu cita en ${cfg.nombre_negocio} el ${c.fecha_texto} a las ${c.hora_texto}`;\n  c.html = plantillaEmail(`¡Hola ${c.nombre}!`, [\n    `Te recordamos tu cita de <b>${esc(c.servicio)}</b>${c.profesional ? ' con ' + esc(c.profesional) : ''} el <b>${esc(c.fecha_texto)} a las ${c.hora_texto}</b>.`,\n    `Si no puedes venir, avísanos cuanto antes respondiendo a este email o llamando al ${esc(cfg.telefono_negocio)}: así otra persona puede aprovechar el hueco.`,\n    `<a href=\"${esc(cfg.link_maps)}\">Cómo llegar</a>`], { texto: 'Cambiar o cancelar mi cita', url: cfg.link_reservas });\n  // ==================\n  out.push({ json: c });\n}\nreturn out;\n"
+      },
+      "id": "afdc8d50-126c-41e4-81d5-3d8ec432b56d",
+      "name": "Select appointments due in next 24h",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Set business settings').first().json.email_remitente }}",
+        "toEmail": "={{ $('Select appointments due in next 24h').item.json.email }}",
+        "subject": "={{ $('Select appointments due in next 24h').item.json.asunto }}",
+        "emailFormat": "html",
+        "html": "={{ $('Select appointments due in next 24h').item.json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "92b29871-b1ee-4368-86a4-bf6663630349",
+      "name": "Send reminder email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ed4f5769-e6b0-4ad8-bf07-6ec2403cf58e",
+              "name": "id",
+              "value": "={{ $('Select appointments due in next 24h').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "297f6717-4e6d-4fe4-9db2-9257043a4c4d",
+              "name": "recordatorio_enviado",
+              "value": "={{ $now.setZone('Europe/Madrid').toFormat('yyyy-MM-dd HH:mm') }} ({{ $('Select appointments due in next 24h').item.json.canal }})",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9b098377-7ece-4dba-b4c8-eca9317c417d",
+      "name": "Mark reminder as sent",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Set business settings').first().json.sheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Citas",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "062fd79a-4afa-43a9-86a5-a16a61f3d0d4",
+      "name": "Update appointment row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Send appointment reminder emails from Google Sheets\n\n**Who it's for:** hair salons, barbershops, beauty studios and any small business that keeps its bookings in a Google Sheet and loses money to no-shows.\n\n**How it works**\n1. Runs every hour between 8:00 and 21:00 (your timezone).\n2. Reads the **Citas** (appointments) tab of your Google Sheet.\n3. Picks appointments starting in the next 24 h (configurable) that are not cancelled/completed and have not been reminded yet. Accepts dates as `YYYY-MM-DD`, `DD/MM/YYYY` or Sheets serial numbers.\n4. Sends a clean HTML reminder email with a \"change or cancel\" button and a map link.\n5. Writes a timestamp in `recordatorio_enviado`, so nobody gets two reminders.\n\n**Set up (about 15 min)**\n1. Copy the sample sheet (columns: id, fecha, hora, cliente, email, telefono, servicio, profesional, estado, recordatorio_enviado).\n2. Fill in **Set business settings** (sheet ID, business name, sender, phone, address, links, timezone, hours before).\n3. Attach a **Google Sheets** credential to both Sheets nodes and an **SMTP** credential to *Send reminder email*.\n4. Run once manually, check the email, then activate.\n\n**Customize:** email texts are in Spanish by default; edit the TEXTS block in *Select appointments due in next 24h* to translate or change them. Get your clients' consent (GDPR) before emailing them.",
+        "height": 620,
+        "width": 620,
+        "color": 1
+      },
+      "id": "c6512bd1-9883-4083-bec6-13dfc9301ab9",
+      "name": "Template overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        -420
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Edit the message texts\nOpen *Select appointments due in next 24h* and edit the **TEXTOS** block to change the subject and body (default: Spanish).",
+        "height": 160,
+        "width": 300,
+        "color": 6
+      },
+      "id": "20803dd8-d41c-4602-af78-e513f345e6aa",
+      "name": "Edit message texts",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Run every hour (8:00-21:00)": {
+      "main": [
+        [
+          {
+            "node": "Set business settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set business settings": {
+      "main": [
+        [
+          {
+            "node": "Read appointments from Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read appointments from Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Select appointments due in next 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select appointments due in next 24h": {
+      "main": [
+        [
+          {
+            "node": "Send reminder email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send reminder email": {
+      "main": [
+        [
+          {
+            "node": "Mark reminder as sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark reminder as sent": {
+      "main": [
+        [
+          {
+            "node": "Update appointment row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid",
+    "saveManualExecutions": true
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "kit": "Kit n8n Peluquerías y Barberías v1.0"
+  },
+  "pinData": {}
+}
